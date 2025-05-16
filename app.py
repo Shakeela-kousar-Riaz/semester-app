@@ -3,7 +3,7 @@ import PyPDF2
 import google.generativeai as genai
 import re
 
-# ====== CUSTOM STYLE AND BACKGROUND ======
+# ====== CUSTOM STYLE ======
 def set_bg_image():
     st.markdown(
         """
@@ -23,8 +23,12 @@ def set_bg_image():
             box-shadow: 0 0 15px rgba(0,0,0,0.2);
         }
 
-        h1, h2, h3, h4, h5, h6, p, div, span, label, textarea {
+        html[data-theme='light'] * {
             color: black !important;
+        }
+
+        html[data-theme='dark'] * {
+            color: white !important;
         }
 
         section[data-testid="stSidebar"] {
@@ -35,27 +39,6 @@ def set_bg_image():
             color: white !important;
         }
 
-        .stFileUploader > div:first-child,
-        .stFileUploader div div {
-            color: black !important;
-        }
-
-        button {
-            color: white !important;
-            font-weight: bold;
-        }
-
-        .stTextInput {
-            width: 80%;
-        }
-
-        .centered-bottom {
-            display: flex;
-            justify-content: center;
-            margin-top: 3rem;
-        }
-
-        /* Chat Bubbles */
         .chat-bubble-user {
             background-color: #1877f2;
             color: white;
@@ -77,13 +60,6 @@ def set_bg_image():
             text-align: left;
             white-space: pre-wrap;
         }
-
-        section[data-testid="stSidebar"] label,
-        section[data-testid="stSidebar"] .stTextInput,
-        section[data-testid="stSidebar"] .stFileUploader,
-        section[data-testid="stSidebar"] .stSelectbox {
-            color: white !important;
-        }
         </style>
         """,
         unsafe_allow_html=True
@@ -91,7 +67,7 @@ def set_bg_image():
 
 set_bg_image()
 
-# ====== TEXT EXTRACTION FUNCTION ======
+# ====== HELPER FUNCTIONS ======
 def extract_text_from_pdf(pdf_file):
     reader = PyPDF2.PdfReader(pdf_file)
     text = ""
@@ -101,15 +77,11 @@ def extract_text_from_pdf(pdf_file):
             text += page_text
     return text.strip()
 
-# ====== CLEANUP FUNCTION ======
 def clean_response(text):
-    # Collapse more than 2 newlines into just 2
     cleaned = re.sub(r'\n{3,}', '\n\n', text)
-    # Collapse multiple spaces/tabs
     cleaned = re.sub(r'[ \t]+', ' ', cleaned)
     return cleaned.strip()
 
-# ====== GEMINI HANDLERS ======
 def generate_quiz(text, model):
     prompt = f"""
     From the following outline, generate 5 multiple-choice questions.
@@ -136,7 +108,7 @@ def ask_question(outline_text, user_query, model):
     response = model.generate_content(prompt)
     return clean_response(response.text)
 
-# ====== SIDEBAR UI ======
+# ====== SIDEBAR ======
 st.sidebar.title("🧭 Semester Controls")
 api_key = st.sidebar.text_input("🔑 Enter your Gemini API Key", type="password")
 uploaded_file = st.sidebar.file_uploader("📄 Upload Semester Outline (PDF only)", type=["pdf"])
@@ -146,7 +118,7 @@ ask_question_checked = st.sidebar.checkbox("Ask a Question")
 generate_assignment_checked = st.sidebar.checkbox("Generate Assignment")
 generate_quiz_checked = st.sidebar.checkbox("Generate Quiz")
 
-# ====== MAIN DISPLAY ======
+# ====== MAIN ======
 st.title("📘 Semester Assistant (Gemini AI)")
 st.write("Interact with your uploaded semester outline using AI-powered Q&A, assignments, and quiz generation.")
 
@@ -162,9 +134,9 @@ if uploaded_file and api_key:
 
     st.success("✅ Outline processed!")
 
-    st.markdown('<div class="centered-bottom">', unsafe_allow_html=True)
     query = st.text_input("✏️ Enter your input:")
-    st.markdown('</div>', unsafe_allow_html=True)
+    assignment_text = ""
+    quiz_text = ""
 
     if query:
         with st.spinner("💬 Getting response from Gemini..."):
@@ -173,18 +145,25 @@ if uploaded_file and api_key:
                 st.session_state.conversation_history.insert(0, (f"[Ask a Question] {query}", response))
 
             if generate_assignment_checked:
-                response = generate_assignment(extracted_text, model)
-                st.session_state.conversation_history.insert(0, (f"[Generate Assignment] {query}", response))
+                assignment_text = generate_assignment(extracted_text, model)
+                st.session_state.conversation_history.insert(0, (f"[Assignment] {query}", assignment_text))
 
             if generate_quiz_checked:
-                response = generate_quiz(extracted_text, model)
-                st.session_state.conversation_history.insert(0, (f"[Generate Quiz] {query}", response))
+                quiz_text = generate_quiz(extracted_text, model)
+                st.session_state.conversation_history.insert(0, (f"[Quiz] {query}", quiz_text))
 
     if st.session_state.conversation_history:
         st.markdown("### 🗨️ Chat History")
         for user_input, ai_response in st.session_state.conversation_history:
             st.markdown(f'<div class="chat-bubble-user">{user_input}</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="chat-bubble-ai">{ai_response}</div>', unsafe_allow_html=True)
+
+    # ====== DOWNLOAD OPTIONS ======
+    if assignment_text:
+        st.download_button("⬇️ Download Assignment", assignment_text, file_name="assignment.txt")
+
+    if quiz_text:
+        st.download_button("⬇️ Download Quiz", quiz_text, file_name="quiz.txt")
 
 elif not uploaded_file:
     st.info("👈 Please upload a PDF file from the sidebar.")
