@@ -37,7 +37,7 @@ def set_bg_image():
 
         .stFileUploader > div:first-child,
         .stFileUploader div div {
-            color: white !important;
+            color: black !important;
         }
 
         button {
