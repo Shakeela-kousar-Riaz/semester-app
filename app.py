@@ -88,6 +88,96 @@ def set_bg_image():
         """,
         unsafe_allow_html=True
     )
+import streamlit as st 
+import PyPDF2
+import google.generativeai as genai
+import re
+
+# ====== CUSTOM STYLE AND BACKGROUND ======
+def set_bg_image():
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background-image: url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgYCf7zQFjCI8WO8Y5XFuGpes5GuCXbyIQEA&s");
+            background-size: cover;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .block-container {
+            background-color: rgba(255, 255, 255, 0.85);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+
+        h1, h2, h3, h4, h5, h6, p, div, span, label, textarea {
+            color: black !important;
+        }
+
+        section[data-testid="stSidebar"] {
+            background-color: #0b1e35;
+        }
+
+        section[data-testid="stSidebar"] * {
+            color: white !important;
+        }
+
+        .stFileUploader > div:first-child,
+        .stFileUploader div div {
+            color: white !important;
+        }
+
+        button {
+            color: white !important;
+            font-weight: bold;
+        }
+
+        .stTextInput {
+            width: 80%;
+        }
+
+        .centered-bottom {
+            display: flex;
+            justify-content: center;
+            margin-top: 3rem;
+        }
+
+        /* Chat Bubbles */
+        .chat-bubble-user {
+            background-color: #1877f2;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 70%;
+            margin: 10px auto 10px 0;
+            text-align: left;
+            white-space: pre-wrap;
+        }
+
+        .chat-bubble-ai {
+            background-color: #f1f0f0;
+            color: black;
+            padding: 10px 15px;
+            border-radius: 15px;
+            width: 100%;
+            margin: 10px 0 10px 0;
+            text-align: left;
+            white-space: pre-wrap;
+        }
+
+        section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] .stTextInput,
+        section[data-testid="stSidebar"] .stFileUploader,
+        section[data-testid="stSidebar"] .stSelectbox {
+            color: white !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 set_bg_image()
 
@@ -103,10 +193,8 @@ def extract_text_from_pdf(pdf_file):
 
 # ====== CLEANUP FUNCTION ======
 def clean_response(text):
-    # Collapse more than 2 newlines into just 2
-    cleaned = re.sub(r'\n{3,}', '\n\n', text)
-    # Collapse multiple spaces/tabs
-    cleaned = re.sub(r'[ \t]+', ' ', cleaned)
+    cleaned = re.sub(r'\n{3,}', '\n\n', text)  # Collapse more than 2 newlines
+    cleaned = re.sub(r'[ \t]+', ' ', cleaned)  # Collapse multiple spaces/tabs
     return cleaned.strip()
 
 # ====== GEMINI HANDLERS ======
