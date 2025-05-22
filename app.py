@@ -9,6 +9,16 @@ def set_bg_image():
     st.markdown(
         """
         <style>
+        /* Title text */
+        .main > div > div > div > h1 {
+            color: black !important;
+        }
+
+        /* All text in the main area */
+        .stMarkdown p, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6,
+        .stText, .stHeading, .stSubheader, .stCaption {
+            color: black !important;
+        }
         /* Keep original background styles */
         .stApp {
             background-image: url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgYCf7zQFjCI8WO8Y5XFuGpes5GuCXbyIQEA&s");
