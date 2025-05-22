@@ -11,7 +11,7 @@ def set_bg_image():
         <style>
         /* Title text */
         .main > div > div > div > h1 {
-            color: black !important;
+            color: red !important;
         }
 
         /* All text in the main area */
