@@ -2,8 +2,9 @@ import streamlit as st
 import PyPDF2
 import google.generativeai as genai
 import re
+from fpdf import FPDF
 
-# ====== CUSTOM STYLE ======
+# ====== CUSTOM STYLE AND BACKGROUND ======
 def set_bg_image():
     st.markdown(
         """
@@ -15,50 +16,17 @@ def set_bg_image():
             background-repeat: no-repeat;
             background-position: center;
         }
-
         .block-container {
             background-color: rgba(255, 255, 255, 0.85);
             padding: 2rem;
             border-radius: 10px;
             box-shadow: 0 0 15px rgba(0,0,0,0.2);
         }
-
-        html[data-theme='light'] * {
-            color: black !important;
-        }
-
-        html[data-theme='dark'] * {
-            color: white !important;
-        }
-
         section[data-testid="stSidebar"] {
-            background-color: #0b1e35;
+            background-color: #001f3f !important;
         }
-
         section[data-testid="stSidebar"] * {
             color: white !important;
-        }
-
-        .chat-bubble-user {
-            background-color: #1877f2;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 15px;
-            max-width: 70%;
-            margin: 10px auto 10px 0;
-            text-align: left;
-            white-space: pre-wrap;
-        }
-
-        .chat-bubble-ai {
-            background-color: #f1f0f0;
-            color: black;
-            padding: 10px 15px;
-            border-radius: 15px;
-            width: 100%;
-            margin: 10px 0 10px 0;
-            text-align: left;
-            white-space: pre-wrap;
         }
         </style>
         """,
@@ -67,27 +35,34 @@ def set_bg_image():
 
 set_bg_image()
 
-# ====== HELPER FUNCTIONS ======
+# ====== TEXT EXTRACTION FUNCTION ======
 def extract_text_from_pdf(pdf_file):
     reader = PyPDF2.PdfReader(pdf_file)
     text = ""
     for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text += page_text
+        text += page.extract_text()
     return text.strip()
 
+# ====== CLEANUP FUNCTION ======
 def clean_response(text):
     cleaned = re.sub(r'\n{3,}', '\n\n', text)
     cleaned = re.sub(r'[ \t]+', ' ', cleaned)
     return cleaned.strip()
 
+# ====== GEMINI HANDLERS ======
 def generate_quiz(text, model):
     prompt = f"""
-    From the following outline, generate 5 multiple-choice questions.
-    Provide options (A to D) and mark the correct answer at the end of each question.
+    You are an expert academic content creator.
 
-    Outline:
+    Create 5 well-structured multiple-choice questions (MCQs) based on the provided semester outline.
+
+    Guidelines:
+    - Each question must have four options (A to D).
+    - Ensure only one correct answer per question.
+    - Highlight the correct answer at the end of each question using this format: **Correct Answer: B**
+    - Cover diverse topics from the outline and make questions conceptually meaningful.
+
+    Semester Outline:
     {text}
     """
     response = model.generate_content(prompt)
@@ -95,9 +70,18 @@ def generate_quiz(text, model):
 
 def generate_assignment(text, model):
     prompt = f"""
-    Based on the following semester outline, generate a detailed assignment prompt with title, objectives, and tasks.
+    You are an academic coordinator.
 
-    Outline:
+    Based on the following semester outline, create a detailed assignment brief including:
+    - Assignment Title
+    - Objectives (2 to 3)
+    - Assignment Tasks (2 to 4 bullet points)
+    - Submission Guidelines
+    - Word Limit
+
+    Ensure that the tasks align with key topics in the outline and require critical thinking and analysis.
+
+    Semester Outline:
     {text}
     """
     response = model.generate_content(prompt)
@@ -108,7 +92,17 @@ def ask_question(outline_text, user_query, model):
     response = model.generate_content(prompt)
     return clean_response(response.text)
 
-# ====== SIDEBAR ======
+# ====== PDF CREATION ======
+def text_to_pdf(text):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_font("Arial", size=12)
+    for line in text.split('\n'):
+        pdf.multi_cell(0, 10, line)
+    return pdf.output(dest='S').encode('latin1')
+
+# ====== SIDEBAR UI ======
 st.sidebar.title("🧭 Semester Controls")
 api_key = st.sidebar.text_input("🔑 Enter your Gemini API Key", type="password")
 uploaded_file = st.sidebar.file_uploader("📄 Upload Semester Outline (PDF only)", type=["pdf"])
@@ -118,54 +112,51 @@ ask_question_checked = st.sidebar.checkbox("Ask a Question")
 generate_assignment_checked = st.sidebar.checkbox("Generate Assignment")
 generate_quiz_checked = st.sidebar.checkbox("Generate Quiz")
 
-# ====== MAIN ======
+# ====== MAIN DISPLAY ======
 st.title("📘 Semester Assistant (Gemini AI)")
 st.write("Interact with your uploaded semester outline using AI-powered Q&A, assignments, and quiz generation.")
 
 if "conversation_history" not in st.session_state:
     st.session_state.conversation_history = []
 
+if "outline_text" not in st.session_state:
+    st.session_state.outline_text = ""
+
 if uploaded_file and api_key:
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel("gemini-1.5-flash")
 
-    with st.spinner("🔍 Extracting text from uploaded file..."):
-        extracted_text = extract_text_from_pdf(uploaded_file)
+    if not st.session_state.outline_text:
+        with st.spinner("🔍 Extracting text from uploaded file..."):
+            st.session_state.outline_text = extract_text_from_pdf(uploaded_file)
+        st.success("✅ Text extracted from PDF successfully!")
 
-    st.success("✅ Outline processed!")
+    outline_text = st.session_state.outline_text
 
-    query = st.text_input("✏️ Enter your input:")
-    assignment_text = ""
-    quiz_text = ""
+    if ask_question_checked:
+        user_question = st.text_input("❓ Enter your question:")
+        if user_question:
+            with st.spinner("Generating answer..."):
+                answer = ask_question(outline_text, user_question, model)
+            st.markdown("### Answer")
+            st.markdown(answer)
 
-    if query:
-        with st.spinner("💬 Getting response from Gemini..."):
-            if ask_question_checked:
-                response = ask_question(extracted_text, query, model)
-                st.session_state.conversation_history.insert(0, (f"[Ask a Question] {query}", response))
+    if generate_assignment_checked:
+        if st.button("📝 Generate Assignment"):
+            with st.spinner("Creating assignment..."):
+                assignment = generate_assignment(outline_text, model)
+            st.markdown("### Assignment")
+            st.markdown(assignment)
+            st.download_button("⬇️ Download Assignment as PDF", data=text_to_pdf(assignment), file_name="assignment.pdf")
 
-            if generate_assignment_checked:
-                assignment_text = generate_assignment(extracted_text, model)
-                st.session_state.conversation_history.insert(0, (f"[Assignment] {query}", assignment_text))
+    if generate_quiz_checked:
+        if st.button("🧠 Generate Quiz"):
+            with st.spinner("Creating quiz..."):
+                quiz = generate_quiz(outline_text, model)
+            st.markdown("### Quiz")
+            st.markdown(quiz)
+            st.download_button("⬇️ Download Quiz as PDF", data=text_to_pdf(quiz), file_name="quiz.pdf")
 
-            if generate_quiz_checked:
-                quiz_text = generate_quiz(extracted_text, model)
-                st.session_state.conversation_history.insert(0, (f"[Quiz] {query}", quiz_text))
-
-    if st.session_state.conversation_history:
-        st.markdown("### 🗨️ Chat History")
-        for user_input, ai_response in st.session_state.conversation_history:
-            st.markdown(f'<div class="chat-bubble-user">{user_input}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="chat-bubble-ai">{ai_response}</div>', unsafe_allow_html=True)
-
-    # ====== DOWNLOAD OPTIONS ======
-    if assignment_text:
-        st.download_button("⬇️ Download Assignment", assignment_text, file_name="assignment.txt")
-
-    if quiz_text:
-        st.download_button("⬇️ Download Quiz", quiz_text, file_name="quiz.txt")
-
-elif not uploaded_file:
-    st.info("👈 Please upload a PDF file from the sidebar.")
-elif not api_key:
-    st.warning("🔐 Please enter your Gemini API key to proceed.")
+else:
+    st.info("Please upload a PDF and enter your Gemini API key to proceed.")
+    
