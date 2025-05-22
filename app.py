@@ -9,11 +9,7 @@ def set_bg_image():
     st.markdown(
         """
         <style>
-        /* Title text */
-        .main > div > div > div > h1 {
-            color: red !important;
-        }
-
+        
         /* All text in the main area */
         .stMarkdown p, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6,
         .stText, .stHeading, .stSubheader, .stCaption {
