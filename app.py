@@ -15,6 +15,11 @@ def set_bg_image():
         .stText, .stHeading, .stSubheader, .stCaption {
             color: black !important;
         }
+        /* Make Gemini API Key input text blue */
+section[data-testid="stSidebar"] input[type="password"] {
+    color: #1E90FF !important;  /* Permanent Blue */
+}
+
         /* Keep original background styles */
         .stApp {
             background-image: url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgYCf7zQFjCI8WO8Y5XFuGpes5GuCXbyIQEA&s");
